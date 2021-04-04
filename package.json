@@ -1,10 +1,11 @@
 {
-	"name": "fcc-issue-tracker",
+	"name": "issue-tracker",
 	"version": "1.0.0",
-	"description": "Issue Tracker Boilerplate",
+	"description": "An Ugly Issue Tracker",
 	"main": "server.js",
 	"scripts": {
 		"start": "node server.js",
+    "watch": "nodemon -e js -w ./ -x \"npm start\"",
 		"test": "mocha --timeout 5000 --recursive --exit --ui tdd tests/"
 	},
 	"dependencies": {
@@ -15,16 +16,20 @@
 		"dotenv": "^8.2.0",
 		"express": "^4.17.1",
 		"mocha": "^8.1.3",
-		"mongodb": "^3.6.2"
+		"mongodb": "^3.6.2",
+		"mongoose": "^5.12.3"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/freeCodeCamp/boilerplate-project-issuetracker"
+		"url": "https://github.com/KRTirtho/issue-tracker"
 	},
 	"keywords": [
 		"node",
 		"hyperdev",
 		"express"
 	],
-	"license": "MIT"
+	"license": "MIT",
+	"devDependencies": {
+		"nodemon": "^2.0.7"
+	}
 }

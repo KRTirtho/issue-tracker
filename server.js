@@ -1,21 +1,26 @@
 'use strict';
 
-const express     = require('express');
-const bodyParser  = require('body-parser');
-const expect      = require('chai').expect;
-const cors        = require('cors');
+const express = require('express');
+const bodyParser = require('body-parser');
+const expect = require('chai').expect;
+const cors = require('cors');
 require('dotenv').config();
 
-const apiRoutes         = require('./routes/api.js');
-const fccTestingRoutes  = require('./routes/fcctesting.js');
-const runner            = require('./test-runner');
+const apiRoutes = require('./routes/api.js');
+const fccTestingRoutes = require('./routes/fcctesting.js');
+const runner = require('./test-runner');
+const mongoose = require('mongoose');
 
 let app = express();
 
 app.use('/public', express.static(process.cwd() + '/public'));
 
-app.use(cors({origin: '*'})); //For FCC testing purposes only
-
+app.use(cors({ origin: '*' })); //For FCC testing purposes only
+mongoose.connect(process.env.DB, {useNewUrlParser: true, useUnifiedTopology: true, useCreateIndex: true, useFindAndModify: false})
+  .then(() => {
+  console.log(`Connection established successfully to mongodb`)
+  })
+  .catch(err => console.log("[DB Connection Error]: ", err));
 
 
 app.use(bodyParser.json());
@@ -37,10 +42,10 @@ app.route('/')
 fccTestingRoutes(app);
 
 //Routing for API 
-apiRoutes(app);  
-    
+apiRoutes(app);
+
 //404 Not Found Middleware
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
   res.status(404)
     .type('text')
     .send('Not Found');
@@ -49,15 +54,15 @@ app.use(function(req, res, next) {
 //Start our server and tests!
 app.listen(process.env.PORT || 3000, function () {
   console.log("Listening on port " + process.env.PORT);
-  if(process.env.NODE_ENV==='test') {
+  if (process.env.NODE_ENV === 'test') {
     console.log('Running Tests...');
     setTimeout(function () {
       try {
         runner.run();
-      } catch(e) {
+      } catch (e) {
         let error = e;
-          console.log('Tests are not valid:');
-          console.log(error);
+        console.log('Tests are not valid:');
+        console.log(error);
       }
     }, 3500);
   }
