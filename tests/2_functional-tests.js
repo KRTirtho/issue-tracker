@@ -93,7 +93,7 @@ suite('Functional Tests', function () {
       .end((_, res) => {
         assert.equal(res.status, 200)
         assert.isArray(res.body);
-        assert.equal(res.body.length, 3);
+        assert.equal(res.body.length, 2);
         done()
       })
   })

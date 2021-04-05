@@ -16,14 +16,15 @@ module.exports = function (app) {
           const query = Object.fromEntries(Object.entries(req.query).map(([key, value]) => [`issues.${key}`, value]));
           const project = (await Project
             .aggregate()
-            .project("issues")
+            .match({ project_name })
+            .project("issues project_name")
             .unwind("$issues")
             .match(query)
             .exec()).map(el => el.issues);
-          return res.json(project ?? []);
+          return res.json(project ? project : []);
         }
         const project = await Project.findOne({ project_name }).lean();
-        res.json(project.issues ?? []);
+        res.json(project && project.issues ? project.issues : []);
       } catch (error) {
         console.error("[GET failed for Project]: ", error);
         res.end();
