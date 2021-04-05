@@ -3,14 +3,20 @@ const chai = require('chai');
 const assert = chai.assert;
 const server = require('../server');
 const Project = require("../model/project");
+const Issues = require("../model/issue");
 const { after } = require('mocha');
 
 chai.use(chaiHttp);
 
 suite('Functional Tests', function () {
   after(() => {
-    Project.deleteOne({ project_name: "spotube" })
-      .then(() => {
+    Project.findOneAndDelete({ project_name: "spotube" })
+      .then((project) => {
+        Issues.deleteMany({ _id: { $in: project.issues } })
+          .then(() => {
+            console.log("deleted all test issues")
+          })
+          .catch(e => console.error("[Failed to delete test issues]: ", e))
         console.log("Successfully deleted test(spotube) project")
       })
       .catch(err => console.error("[Failed to delete test(spotube) project]: ", err))

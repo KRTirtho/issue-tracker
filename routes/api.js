@@ -1,5 +1,6 @@
 'use strict';
 const Project = require("../model/project");
+const Issue = require("../model/issue");
 const mongoose = require("mongoose");
 module.exports = function (app) {
 
@@ -13,17 +14,11 @@ module.exports = function (app) {
           if (open !== undefined) {
             req.query.open = open === "true";
           }
-          const query = Object.fromEntries(Object.entries(req.query).map(([key, value]) => [`issues.${key}`, value]));
-          const project = (await Project
-            .aggregate()
-            .match({ project_name })
-            .project("issues project_name")
-            .unwind("$issues")
-            .match(query)
-            .exec()).map(el => el.issues);
-          return res.json(project ? project : []);
+          const project = await Project.findOne({ project_name })
+            .populate({ path: "issues", match: req.query, select: "-project" });
+          return res.json(project && project.issues ? project.issues : []);
         }
-        const project = await Project.findOne({ project_name }).lean();
+        const project = await Project.findOne({ project_name }).populate("issues").lean();
         res.json(project && project.issues ? project.issues : []);
       } catch (error) {
         console.error("[GET failed for Project]: ", error);
@@ -39,8 +34,17 @@ module.exports = function (app) {
           return res.json({ error: 'required field(s) missing' });
         }
         const _id = mongoose.Types.ObjectId();
-        const updatedProject = await Project.findOneAndUpdate({ project_name }, { $push: { issues: { ...issue, _id } } }, { new: true, upsert: true }).lean()
-        return res.json(updatedProject.issues.find(issue => String(issue._id) === String(_id)));
+        const project = await Project.findOne({ project_name }).populate("issues");
+        if (!project) {
+          const newIssue = new Issue({ ...issue, project: _id });
+          await Project.create({ project_name, _id, issues: [newIssue._id] });
+          await newIssue.save();
+          return res.json(newIssue);
+        }
+        const { _doc: { project: l, __v, ...newIssue } } = await Issue.create({ ...issue, project: { _id: project._id } });
+        project.issues.push(newIssue._id);
+        await project.save();
+        return res.json(newIssue);
       } catch (error) {
         console.error("[POST failed for Project]: ", error);
       }
@@ -48,24 +52,14 @@ module.exports = function (app) {
 
     .put(async function (req, res) {
       try {
-        let project_name = req.params.project;
-        let { _id, issue_text, created_by, assigned_to, status_text, issue_title, open } = req.body;
+        let { _id, ...fields } = req.body;
         if (!_id) {
           return res.json({ error: 'missing _id' })
         }
-        else if (Object.entries(req.body).length === 1) {
+        else if (Object.entries(fields).length === 0) {
           return res.json({ error: 'no update field(s) sent', _id })
         }
-        await Project.updateOne({ project_name, "issues._id": _id }, {
-          $set: {
-            "issues.$.issue_title": issue_title || undefined,
-            "issues.$.issue_text": issue_text || undefined,
-            "issues.$.created_by": created_by || undefined,
-            "issues.$.assigned_to": assigned_to || undefined,
-            "issues.$.status_text": status_text || undefined,
-            "issues.$.open": open || undefined,
-          }
-        }, { multi: false, runValidators: true, omitUndefined: true })
+        await Issue.updateOne({ _id }, fields, { multi: false, runValidators: true, omitUndefined: true })
         res.json({ result: "successfully updated", _id });
       } catch (error) {
         console.error("[PUT failed for Project]: ", error);
@@ -76,11 +70,10 @@ module.exports = function (app) {
     .delete(async function (req, res) {
       const _id = req.body._id;
       try {
-        let project_name = req.params.project;
         if (!_id) {
           return res.json({ error: 'missing _id' });
         }
-        await Project.updateOne({ project_name, "issues._id": _id }, { $pull: { issues: { _id } } }, { multi: false })
+        await Issue.deleteOne({ _id });
         res.json({ result: "successfully deleted", _id })
       } catch (error) {
         console.error("[DELETE failed for Project]: ", error);
